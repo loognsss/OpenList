@@ -34,6 +34,7 @@ func Init() {
 	Log()
 	InitDB()
 	data.InitData()
+	InitPlugins()
 	InitStreamLimit()
 	InitIndex()
 	InitUpgradePatch()
