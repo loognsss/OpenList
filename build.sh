@@ -201,7 +201,7 @@ BuildDev() {
     CGO_LDFLAGS="-static" go build -o ./dist/$appName-$os_arch -ldflags="$muslflags" -tags=jsoniter .
     AssertStaticBinary "./dist/$appName-$os_arch"
   done
-  xgo -targets=windows/amd64,darwin/amd64,darwin/arm64 -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
+  xgo -dockerargs "--network=host" -targets=windows/amd64,darwin/amd64,darwin/arm64 -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
   mv "$appName"-* dist
   cd dist
   # cp ./"$appName"-windows-amd64.exe ./"$appName"-windows-amd64-upx.exe
@@ -273,7 +273,7 @@ BuildRelease() {
   mkdir -p "build"
   BuildWinArm64 ./build/"$appName"-windows-arm64.exe
   BuildWin7 ./build/"$appName"-windows7
-  xgo -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
+  xgo -dockerargs "--network=host" -out "$appName" -ldflags="$ldflags" -tags=jsoniter .
   # why? Because some target platforms seem to have issues with upx compression
   # upx -9 ./"$appName"-linux-amd64
   # cp ./"$appName"-windows-amd64.exe ./"$appName"-windows-amd64-upx.exe
@@ -621,7 +621,7 @@ otherParam=""
 
 for arg in "$@"; do
   case $arg in
-    dev|beta|release|zip|prepare)
+    dev|beta|release|local|zip|prepare)
       if [ -z "$buildType" ]; then
         buildType="$arg"
       fi
@@ -644,6 +644,17 @@ done
 
 if [ "$buildType" = "dev" ]; then
   FetchWebRolling
+  if [ "$dockerType" = "docker" ]; then
+    BuildDocker
+  elif [ "$dockerType" = "docker-multiplatform" ]; then
+      BuildDockerMultiplatform
+  elif [ "$dockerType" = "web" ]; then
+    echo "web only"
+  else
+    BuildDev
+  fi
+elif [ "$buildType" = "local" ]; then
+  echo "using local public/dist without fetching frontend release artifacts"
   if [ "$dockerType" = "docker" ]; then
     BuildDocker
   elif [ "$dockerType" = "docker-multiplatform" ]; then
@@ -727,10 +738,12 @@ elif [ "$buildType" = "zip" ]; then
   fi
 else
   echo -e "Parameter error"
-  echo -e "Usage: $0 {dev|beta|release|zip|prepare} [docker|docker-multiplatform|linux_musl_arm|linux_musl|android|freebsd|web] [lite] [other_params]"
+  echo -e "Usage: $0 {dev|beta|release|local|zip|prepare} [docker|docker-multiplatform|linux_musl_arm|linux_musl|android|freebsd|web] [lite] [other_params]"
   echo -e "Examples:"
   echo -e "  $0 dev"
   echo -e "  $0 dev lite"
+  echo -e "  $0 local"
+  echo -e "  $0 local docker"
   echo -e "  $0 dev docker"
   echo -e "  $0 dev docker lite"
   echo -e "  $0 release"
